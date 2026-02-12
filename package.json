@@ -1,0 +1,42 @@
+{
+	"name": "image-converter",
+	"private": true,
+	"version": "0.0.1",
+	"type": "module",
+	"scripts": {
+		"dev": "vite dev",
+		"build": "vite build",
+		"preview": "vite preview",
+		"prepare": "svelte-kit sync || echo ''",
+		"check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
+		"check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch"
+	},
+	"devDependencies": {
+		"@sveltejs/adapter-node": "^5.0.0",
+		"@sveltejs/kit": "^2.50.2",
+		"@sveltejs/vite-plugin-svelte": "^6.2.4",
+		"@tailwindcss/vite": "^4.1.18",
+		"@types/qs": "^6.14.0",
+		"@types/uuid": "^10.0.0",
+		"flowbite": "^4.0.1",
+		"flowbite-svelte": "^1.31.0",
+		"flowbite-svelte-icons": "^3.1.0",
+		"svelte": "^5.49.2",
+		"svelte-check": "^4.3.6",
+		"tailwindcss": "^4.1.18",
+		"typescript": "^5.9.3",
+		"vite": "^7.3.1"
+	},
+	"dependencies": {
+		"@lucia-auth/adapter-mongodb": "^1.0.3",
+		"form-data": "^4.0.5",
+		"lucia": "^3.2.2",
+		"mailgun.js": "^12.7.0",
+		"mongodb": "^6.21.0",
+		"qs": "^6.14.1",
+		"stripe": "^20.3.1",
+		"uuid": "^13.0.0",
+		"express": "^5.1.0",
+		"winston": "^3.17.0"
+	}
+}

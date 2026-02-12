@@ -1,0 +1,62 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: $APP_NAME
+spec:
+  selector:
+    matchLabels:
+      app: $APP_NAME
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: $APP_NAME
+    spec:
+      containers:
+        - name: $APP_NAME
+          envFrom:
+          - secretRef:
+              name: format-selector-env
+          image: $IMAGE_NAME
+          imagePullPolicy: Always
+          ports:
+          - containerPort: 3000
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: $APP_NAME-service
+spec:
+  selector:
+    app: $APP_NAME
+  ports:
+    - port: 3000
+      targetPort: 3000
+  type: ClusterIP
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: $APP_NAME-ingress
+  annotations:
+    kubernetes.io/ingress.class: 'nginx'
+    cert-manager.io/cluster-issuer: 'letsencrypt-production'
+    nginx.ingress.kubernetes.io/from-to-www-redirect: "true"
+    nginx.ingress.kubernetes.io/proxy-body-size: 10000m
+spec:
+  rules:
+    - host: "format.select"
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: $APP_NAME-service
+                port:
+                  number: 3000
+  tls:
+    - hosts:
+        - www.format.select
+        - format.select
+      secretName: format-selector-tls-secret
