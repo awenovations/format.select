@@ -3,6 +3,7 @@
 	import { CloudArrowUpOutline, DownloadOutline } from 'flowbite-svelte-icons';
 	import { FORMAT_OPTIONS, ACCEPTED_INPUT_TYPES, type OutputFormat } from '$lib/formats';
 	import { invalidateAll } from '$app/navigation';
+	import Landing from './Landing.svelte';
 
 	let { data } = $props();
 
@@ -28,20 +29,24 @@
 	const ACCEPTED_MIMES = ACCEPTED_INPUT_TYPES.split(',');
 
 	function handleDragEnter(e: DragEvent) {
+		if (!data.session) return;
 		e.preventDefault();
 		dragging++;
 	}
 
 	function handleDragLeave(e: DragEvent) {
+		if (!data.session) return;
 		e.preventDefault();
 		dragging--;
 	}
 
 	function handleDragOver(e: DragEvent) {
+		if (!data.session) return;
 		e.preventDefault();
 	}
 
 	function handleDrop(e: DragEvent) {
+		if (!data.session) return;
 		e.preventDefault();
 		dragging = 0;
 
@@ -119,6 +124,8 @@
 	ondrop={handleDrop}
 />
 
+{#if data.session}
+
 {#if dragging > 0}
 	<div class="fixed inset-0 z-50 flex items-center justify-center bg-blue-500/20 backdrop-blur-sm">
 		<div class="rounded-2xl border-4 border-dashed border-blue-500 bg-white/90 px-16 py-12 dark:bg-gray-800/90">
@@ -131,7 +138,7 @@
 <div class="flex flex-1 items-start justify-center px-4 pt-16">
 	<div class="w-full max-w-xl">
 		<h1 class="mb-8 text-center text-3xl font-bold text-gray-900 dark:text-white">
-			Format.Select
+			format<span class="text-blue-600">.select</span>
 		</h1>
 
 		<Card size="xl" class="p-6">
@@ -206,3 +213,7 @@
 		</Card>
 	</div>
 </div>
+
+{:else}
+<Landing />
+{/if}

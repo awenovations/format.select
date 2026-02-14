@@ -12,9 +12,12 @@ export const load: LayoutServerLoad = async ({ cookies, url }) => {
 
 	if (
 		!session?.user &&
+		url.pathname !== '/' &&
 		url.pathname !== '/signin' &&
 		!url.pathname.startsWith('/signup') &&
-		!url.pathname.startsWith('/pwd-reset')
+		!url.pathname.startsWith('/pwd-reset') &&
+		!url.pathname.startsWith('/paywall') &&
+		!url.pathname.startsWith('/docs')
 	) {
 		throw redirect(302, '/signin');
 	} else if (

@@ -51,7 +51,7 @@
 			Choose Your Plan
 		</h1>
 
-		{#if data.usage.plan === 'free'}
+		{#if data.usage?.plan === 'free'}
 			<p class="mb-8 text-center text-gray-600 dark:text-gray-400">
 				You've used {data.usage.used} of {data.usage.limit} free conversions today.
 			</p>
@@ -75,7 +75,7 @@
 						All image formats
 					</li>
 				</ul>
-				{#if data.usage.plan === 'free'}
+				{#if data.usage?.plan === 'free'}
 					<Badge color="gray" class="w-full justify-center py-2">Current Plan</Badge>
 				{/if}
 			</Card>
@@ -102,7 +102,7 @@
 						Priority processing
 					</li>
 				</ul>
-				{#if data.usage.plan === 'pro'}
+				{#if data.usage?.plan === 'pro'}
 					<Badge color="blue" class="mb-2 w-full justify-center py-2">Current Plan</Badge>
 					<Button
 						color="alternative"
@@ -127,7 +127,7 @@
 			</Card>
 		</div>
 
-		{#if data.usage.plan === 'pro' || data.hasBilling}
+		{#if data.usage?.plan === 'pro' || data.hasBilling}
 			<p class="mt-6 text-center text-sm text-gray-500 dark:text-gray-400">
 				<button class="underline hover:text-gray-700 dark:hover:text-gray-300" onclick={handleManageBilling}>
 					Manage billing & cancel subscription
@@ -161,7 +161,7 @@
 						10 MB max file size
 					</li>
 				</ul>
-				{#if data.apiUsage.plan === 'api_free'}
+				{#if data.apiUsage?.plan === 'api_free'}
 					<Badge color="gray" class="w-full justify-center py-2">Current Plan</Badge>
 				{/if}
 			</Card>
@@ -188,7 +188,7 @@
 						25 MB max file size
 					</li>
 				</ul>
-				{#if data.apiUsage.plan === 'api_developer'}
+				{#if data.apiUsage?.plan === 'api_developer'}
 					<Badge color="blue" class="mb-2 w-full justify-center py-2">Current Plan</Badge>
 					<Button
 						color="alternative"
@@ -199,7 +199,7 @@
 					>
 						Manage Subscription
 					</Button>
-				{:else if data.apiUsage.plan === 'api_free'}
+				{:else if data.apiUsage?.plan === 'api_free'}
 					<Button
 						color="blue"
 						class="w-full"
@@ -231,7 +231,7 @@
 						50 MB max file size
 					</li>
 				</ul>
-				{#if data.apiUsage.plan === 'api_business'}
+				{#if data.apiUsage?.plan === 'api_business'}
 					<Badge color="green" class="mb-2 w-full justify-center py-2">Current Plan</Badge>
 					<Button
 						color="alternative"
@@ -242,7 +242,7 @@
 					>
 						Manage Subscription
 					</Button>
-				{:else if data.apiUsage.plan !== 'api_admin'}
+				{:else if data.apiUsage?.plan !== 'api_admin'}
 					<Button
 						color="blue"
 						class="w-full"
@@ -256,7 +256,7 @@
 			</Card>
 		</div>
 
-		{#if data.usage.plan !== 'free' || data.usage.used < data.usage.limit}
+		{#if data.usage && (data.usage.plan !== 'free' || data.usage.used < data.usage.limit)}
 			<p class="mt-8 text-center">
 				<A href="/" class="text-sm text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300">&larr; back</A>
 			</p>

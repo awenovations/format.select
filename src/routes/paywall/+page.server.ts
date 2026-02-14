@@ -9,7 +9,11 @@ export const load: PageServerLoad = async ({ cookies }) => {
 	const session = sessionId ? await validateUserAndGetDetails(sessionId) : null;
 
 	if (!session?.user) {
-		throw redirect(302, '/signin');
+		return {
+			usage: null,
+			hasBilling: false,
+			apiUsage: null
+		};
 	}
 
 	const plan = (session.user.plan as Plan) ?? 'free';

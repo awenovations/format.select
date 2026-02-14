@@ -18,7 +18,7 @@
 <div class="flex flex-1 items-start justify-center px-4 pt-16">
 	<div class="w-full max-w-md">
 		<h1 class="mb-8 text-center text-3xl font-bold text-gray-900 dark:text-white">
-			Format.Select
+			format<span class="text-blue-600">.select</span>
 		</h1>
 
 		<Card size="md" class="p-6">
