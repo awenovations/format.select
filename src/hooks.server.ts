@@ -6,6 +6,38 @@ import { csrf } from './hooks/csrf';
 
 const allowedPaths: string[] = ['/api/v1/'];
 
+const posthogProxy: Handle = async ({ event, resolve }) => {
+	const { pathname } = event.url;
+
+	if (pathname.startsWith('/relay-oDVs')) {
+		const hostname = pathname.startsWith('/relay-oDVs/static/')
+			? 'us-assets.i.posthog.com'
+			: 'us.i.posthog.com';
+
+		const url = new URL(event.request.url);
+		url.protocol = 'https:';
+		url.hostname = hostname;
+		url.port = '443';
+		url.pathname = pathname.replace('/relay-oDVs/', '');
+
+		const headers = new Headers(event.request.headers);
+		headers.set('Accept-Encoding', '');
+		headers.set('host', hostname);
+
+		const response = await fetch(url.toString(), {
+			method: event.request.method,
+			headers,
+			body: event.request.body,
+			// @ts-ignore
+			duplex: 'half'
+		});
+
+		return response;
+	}
+
+	return resolve(event);
+};
+
 const sessionValidation: Handle = async ({ event, resolve }) => {
 	const sessionId = event.cookies.get(lucia.sessionCookieName);
 
@@ -47,4 +79,4 @@ const csrfHandle: Handle = async ({ event, resolve }) => {
 	return csrf(allowedPaths, origins)({ event, resolve });
 };
 
-export const handle: Handle = sequence(csrfHandle, sessionValidation);
+export const handle: Handle = sequence(posthogProxy, csrfHandle, sessionValidation);

@@ -24,7 +24,7 @@ export const load: LayoutServerLoad = async ({ cookies, url }) => {
 		session?.user &&
 		(url.pathname.startsWith('/signin') || url.pathname.startsWith('/signup'))
 	) {
-		throw redirect(302, '/');
+		throw redirect(302, '/app');
 	}
 
 	let usage = null;
@@ -36,6 +36,7 @@ export const load: LayoutServerLoad = async ({ cookies, url }) => {
 		if (
 			plan === 'free' &&
 			usage.used >= usage.limit &&
+			url.pathname !== '/' &&
 			!EXEMPT_PATHS.some((p) => url.pathname.startsWith(p))
 		) {
 			throw redirect(302, '/paywall');

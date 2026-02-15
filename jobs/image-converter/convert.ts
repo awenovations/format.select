@@ -3,7 +3,7 @@ import { promisify } from 'node:util';
 import { writeFile, readFile, unlink, rmdir, mkdtemp } from 'node:fs/promises';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
-import { FORMAT_OPTIONS, type OutputFormat } from './formats.js';
+import { FORMAT_OPTIONS, type OutputFormat } from './formats';
 
 const execFileAsync = promisify(execFile);
 

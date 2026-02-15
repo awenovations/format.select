@@ -242,7 +242,7 @@
 		</Card>
 
 		<p class="mt-6 text-center">
-			<A href="/" class="text-sm text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300">&larr; back</A>
+			<A href="/app" class="text-sm text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300">&larr; back</A>
 		</p>
 	</div>
 </div>

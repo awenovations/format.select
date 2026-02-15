@@ -29,7 +29,7 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Build and Push Docker Image
+      - name: Build and Push App Image
         uses: docker/build-push-action@v5
         with:
           context: .
@@ -37,6 +37,15 @@ jobs:
           push: true
           tags: |
             ghcr.io/${{ github.repository }}:${{ env.COMMIT_SHA }}
+
+      - name: Build and Push Worker Image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./jobs/image-converter
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository }}-worker:${{ env.COMMIT_SHA }}
 
       - name: Verify Image
         run: docker images

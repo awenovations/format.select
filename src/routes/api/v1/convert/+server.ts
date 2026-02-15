@@ -1,8 +1,15 @@
 import type { RequestHandler } from './$types';
 import { authenticateApiRequest } from '$lib/server/api-auth';
-import { API_PLAN_CONFIG, type ApiPlan, checkApiConversionLimit, recordApiConversion, getApiUsageInfo } from '$lib/server/api-usage';
-import { convertImage } from '$lib/convert';
-import { SUPPORTED_FORMATS, FORMAT_OPTIONS, type OutputFormat } from '$lib/formats';
+import {
+	API_PLAN_CONFIG,
+	type ApiPlan,
+	checkApiConversionLimit,
+	recordApiConversion,
+	getApiUsageInfo
+} from '$lib/server/api-usage';
+import { SUPPORTED_FORMATS, type OutputFormat } from '$lib/formats';
+import { submitConversionJob, waitForJobResult } from '$lib/server/jobs';
+import { storeFile, retrieveFile, deleteFile } from '$lib/db/gridfs';
 
 function jsonError(message: string, status: number, extra?: Record<string, any>) {
 	return new Response(JSON.stringify({ error: message, ...extra }), {
@@ -20,20 +27,23 @@ export const GET: RequestHandler = async ({ request }) => {
 	const apiPlan: ApiPlan = auth.user.apiPlan ?? 'api_free';
 	const usage = await getApiUsageInfo(auth.userId, apiPlan);
 
-	return new Response(JSON.stringify({
-		plan: usage.plan,
-		label: usage.label,
-		usage: {
-			used: usage.used,
-			limit: usage.limit,
-			remaining: usage.remaining,
-			period: usage.period
-		},
-		maxFileSize: usage.maxFileSize,
-		formats: SUPPORTED_FORMATS
-	}), {
-		headers: { 'Content-Type': 'application/json' }
-	});
+	return new Response(
+		JSON.stringify({
+			plan: usage.plan,
+			label: usage.label,
+			usage: {
+				used: usage.used,
+				limit: usage.limit,
+				remaining: usage.remaining,
+				period: usage.period
+			},
+			maxFileSize: usage.maxFileSize,
+			formats: SUPPORTED_FORMATS
+		}),
+		{
+			headers: { 'Content-Type': 'application/json' }
+		}
+	);
 };
 
 export const POST: RequestHandler = async ({ request }) => {
@@ -45,7 +55,10 @@ export const POST: RequestHandler = async ({ request }) => {
 	const apiPlan: ApiPlan = auth.user.apiPlan ?? 'api_free';
 	const planConfig = API_PLAN_CONFIG[apiPlan];
 
-	const { allowed, remaining, limit, resetAt } = await checkApiConversionLimit(auth.userId, apiPlan);
+	const { allowed, remaining, limit, resetAt } = await checkApiConversionLimit(
+		auth.userId,
+		apiPlan
+	);
 	if (!allowed) {
 		return jsonError('Daily API conversion limit reached', 429, {
 			limit,
@@ -57,7 +70,10 @@ export const POST: RequestHandler = async ({ request }) => {
 	try {
 		formData = await request.formData();
 	} catch {
-		return jsonError('Invalid request body. Expected multipart/form-data with file, format, and optional quality fields.', 400);
+		return jsonError(
+			'Invalid request body. Expected multipart/form-data with file, format, and optional quality fields.',
+			400
+		);
 	}
 
 	const file = formData.get('file');
@@ -67,15 +83,22 @@ export const POST: RequestHandler = async ({ request }) => {
 
 	if (file.size > planConfig.maxFileSize) {
 		const maxMB = planConfig.maxFileSize / (1024 * 1024);
-		return jsonError(`File too large. Your ${planConfig.label} plan allows up to ${maxMB}MB.`, 413, {
-			maxFileSize: planConfig.maxFileSize,
-			fileSize: file.size
-		});
+		return jsonError(
+			`File too large. Your ${planConfig.label} plan allows up to ${maxMB}MB.`,
+			413,
+			{
+				maxFileSize: planConfig.maxFileSize,
+				fileSize: file.size
+			}
+		);
 	}
 
 	const format = formData.get('format') as string;
 	if (!format || !SUPPORTED_FORMATS.includes(format as OutputFormat)) {
-		return jsonError(`Invalid or missing format. Supported: ${SUPPORTED_FORMATS.join(', ')}`, 400);
+		return jsonError(
+			`Invalid or missing format. Supported: ${SUPPORTED_FORMATS.join(', ')}`,
+			400
+		);
 	}
 
 	const qualityStr = formData.get('quality') as string | null;
@@ -90,12 +113,33 @@ export const POST: RequestHandler = async ({ request }) => {
 	try {
 		const inputBuffer = Buffer.from(await file.arrayBuffer());
 
-		const result = await convertImage({
-			inputBuffer,
+		// Store input file in GridFS
+		const inputFileId = await storeFile(inputBuffer, {
+			originalName,
 			inputExtension,
-			outputFormat: format as OutputFormat,
+			userId: auth.userId
+		});
+
+		// Submit job to Redis stream
+		const jobId = await submitConversionJob({
+			inputFileId,
+			inputExtension,
+			outputFormat: format,
 			quality
 		});
+
+		// Wait for worker to finish (long-poll)
+		const result = await waitForJobResult(jobId);
+
+		if (!result.success) {
+			return jsonError(`Conversion failed: ${result.error || 'Unknown error'}`, 500);
+		}
+
+		// Retrieve output file from GridFS
+		const outputBuffer = await retrieveFile(result.outputFileId!);
+
+		// Clean up output file from GridFS
+		await deleteFile(result.outputFileId!);
 
 		await recordApiConversion(auth.userId);
 
@@ -103,11 +147,11 @@ export const POST: RequestHandler = async ({ request }) => {
 		const baseName = originalName.replace(/\.[^.]+$/, '');
 		const outputFilename = `${baseName}.${format}`;
 
-		return new Response(new Uint8Array(result.data), {
+		return new Response(new Uint8Array(outputBuffer), {
 			headers: {
-				'Content-Type': result.mimeType,
+				'Content-Type': result.mimeType!,
 				'Content-Disposition': `attachment; filename="${outputFilename}"`,
-				'Content-Length': String(result.data.length),
+				'Content-Length': String(outputBuffer.length),
 				'X-RateLimit-Limit': String(limit),
 				'X-RateLimit-Remaining': String(Math.max(0, newRemaining)),
 				'X-RateLimit-Reset': resetAt.toISOString()

@@ -1,0 +1,24 @@
+{
+  "name": "image-converter-worker",
+  "version": "1.0.0",
+  "description": "Worker to process image conversion jobs from Redis stream",
+  "main": "index.js",
+  "scripts": {
+    "start": "node dist/index.js",
+    "build": "tsx build.mts",
+    "dev": "WORKER_NAME=image-converter tsx watch --require dotenv/config index.ts dotenv_config_path=../../.env"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.5",
+    "mongodb": "^6.21.0",
+    "redis": "^5.8.2",
+    "uuid": "^13.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.7.2",
+    "esbuild": "^0.25.0",
+    "glob": "^11.0.3",
+    "tsx": "^4.20.6",
+    "typescript": "^5.6.2"
+  }
+}

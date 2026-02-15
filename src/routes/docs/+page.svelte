@@ -13,7 +13,7 @@
 			<p class="mb-3 text-sm text-gray-600 dark:text-gray-400">
 				All API requests require a Bearer token in the <code class="rounded bg-gray-100 px-1.5 py-0.5 text-xs dark:bg-gray-700">Authorization</code> header.
 			</p>
-			<div class="mb-3 overflow-x-auto rounded bg-gray-100 p-4 font-mono text-sm dark:bg-gray-800">
+			<div class="mb-3 overflow-x-auto rounded bg-gray-100 p-4 font-mono text-sm dark:bg-gray-800 dark:text-gray-200">
 				<span class="text-gray-500">Authorization:</span> Bearer ic_your_token_here
 			</div>
 			<p class="text-sm text-gray-600 dark:text-gray-400">
@@ -28,11 +28,11 @@
 			<!-- GET -->
 			<h3 class="mb-2 text-lg font-medium text-gray-900 dark:text-white">
 				<code class="rounded bg-green-100 px-2 py-1 text-sm text-green-800 dark:bg-green-900 dark:text-green-200">GET</code>
-				<code class="ml-2 text-sm">/api/v1/convert</code>
+				<code class="ml-2 text-sm dark:text-gray-200">/api/v1/convert</code>
 			</h3>
 			<p class="mb-3 text-sm text-gray-600 dark:text-gray-400">Returns your current usage info, plan details, and supported formats.</p>
 			<p class="mb-1 text-xs font-semibold uppercase text-gray-500 dark:text-gray-400">Response</p>
-			<div class="mb-6 overflow-x-auto rounded bg-gray-100 p-4 font-mono text-sm dark:bg-gray-800">
+			<div class="mb-6 overflow-x-auto rounded bg-gray-100 p-4 font-mono text-sm dark:bg-gray-800 dark:text-gray-200">
 				<pre>{`{
   "plan": "api_free",
   "label": "Free",
@@ -50,7 +50,7 @@
 			<!-- POST -->
 			<h3 class="mb-2 text-lg font-medium text-gray-900 dark:text-white">
 				<code class="rounded bg-blue-100 px-2 py-1 text-sm text-blue-800 dark:bg-blue-900 dark:text-blue-200">POST</code>
-				<code class="ml-2 text-sm">/api/v1/convert</code>
+				<code class="ml-2 text-sm dark:text-gray-200">/api/v1/convert</code>
 			</h3>
 			<p class="mb-3 text-sm text-gray-600 dark:text-gray-400">Convert an image file. Send as <code class="rounded bg-gray-100 px-1.5 py-0.5 text-xs dark:bg-gray-700">multipart/form-data</code>.</p>
 
@@ -248,7 +248,7 @@
 					</TableBodyRow>
 				</TableBody>
 			</Table>
-			<div class="mt-3 overflow-x-auto rounded bg-gray-100 p-4 font-mono text-sm dark:bg-gray-800">
+			<div class="mt-3 overflow-x-auto rounded bg-gray-100 p-4 font-mono text-sm dark:bg-gray-800 dark:text-gray-200">
 				<pre>{`{
   "error": "Daily API conversion limit reached",
   "limit": 50,
@@ -263,7 +263,7 @@
 
 			<!-- curl -->
 			<h3 class="mb-2 text-sm font-semibold uppercase text-gray-500 dark:text-gray-400">curl</h3>
-			<div class="mb-6 overflow-x-auto rounded bg-gray-100 p-4 font-mono text-sm dark:bg-gray-800">
+			<div class="mb-6 overflow-x-auto rounded bg-gray-100 p-4 font-mono text-sm dark:bg-gray-800 dark:text-gray-200">
 				<pre>{`curl -X POST https://format.select/api/v1/convert \\
   -H "Authorization: Bearer ic_your_token_here" \\
   -F "file=@photo.png" \\
@@ -274,7 +274,7 @@
 
 			<!-- JavaScript -->
 			<h3 class="mb-2 text-sm font-semibold uppercase text-gray-500 dark:text-gray-400">JavaScript (fetch)</h3>
-			<div class="mb-6 overflow-x-auto rounded bg-gray-100 p-4 font-mono text-sm dark:bg-gray-800">
+			<div class="mb-6 overflow-x-auto rounded bg-gray-100 p-4 font-mono text-sm dark:bg-gray-800 dark:text-gray-200">
 				<pre>{`const form = new FormData();
 form.append("file", fileInput.files[0]);
 form.append("format", "webp");
@@ -297,7 +297,7 @@ const blob = await res.blob();
 
 			<!-- Python -->
 			<h3 class="mb-2 text-sm font-semibold uppercase text-gray-500 dark:text-gray-400">Python (requests)</h3>
-			<div class="overflow-x-auto rounded bg-gray-100 p-4 font-mono text-sm dark:bg-gray-800">
+			<div class="overflow-x-auto rounded bg-gray-100 p-4 font-mono text-sm dark:bg-gray-800 dark:text-gray-200">
 				<pre>{`import requests
 
 url = "https://format.select/api/v1/convert"
@@ -318,7 +318,7 @@ with open("photo.webp", "wb") as out:
 		</Card>
 
 		<p class="mt-6 text-center">
-			<A href="/" class="text-sm text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300">&larr; back</A>
+			<A href="/app" class="text-sm text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300">&larr; back</A>
 		</p>
 	</div>
 </div>

@@ -18,10 +18,3 @@ export const FORMAT_OPTIONS: FormatOption[] = [
 	{ value: 'avif', name: 'AVIF', supportsQuality: true, mimeType: 'image/avif' },
 	{ value: 'ico', name: 'ICO', supportsQuality: false, mimeType: 'image/x-icon' }
 ];
-
-export const ACCEPTED_INPUT_TYPES =
-	'image/png,image/jpeg,image/webp,image/gif,image/bmp,image/tiff,image/avif,image/svg+xml,image/x-icon';
-
-export const MAX_FILE_SIZE = 50 * 1024 * 1024;
-
-export const CHUNK_SIZE = 1 * 1024 * 1024; // 1MB

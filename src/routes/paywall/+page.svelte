@@ -258,7 +258,7 @@
 
 		{#if data.usage && (data.usage.plan !== 'free' || data.usage.used < data.usage.limit)}
 			<p class="mt-8 text-center">
-				<A href="/" class="text-sm text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300">&larr; back</A>
+				<A href="/app" class="text-sm text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300">&larr; back</A>
 			</p>
 		{/if}
 	</div>

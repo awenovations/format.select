@@ -21,6 +21,72 @@ spec:
           imagePullPolicy: Always
           ports:
           - containerPort: 3000
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: $APP_NAME-worker
+spec:
+  selector:
+    matchLabels:
+      app: $APP_NAME-worker
+  replicas: 3
+  template:
+    metadata:
+      labels:
+        app: $APP_NAME-worker
+    spec:
+      containers:
+        - name: $APP_NAME-worker
+          envFrom:
+          - secretRef:
+              name: format-selector-env
+          image: $WORKER_IMAGE_NAME
+          imagePullPolicy: Always
+          env:
+          - name: WORKER_NAME
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.name
+          resources:
+            requests:
+              cpu: 250m
+              memory: 512Mi
+            limits:
+              cpu: "1"
+              memory: 1Gi
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: $APP_NAME-worker-hpa
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: $APP_NAME-worker
+  minReplicas: 3
+  maxReplicas: 10
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 70
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: 80
 ---
 apiVersion: v1
 kind: Service
@@ -43,6 +109,9 @@ metadata:
     cert-manager.io/cluster-issuer: 'letsencrypt-production'
     nginx.ingress.kubernetes.io/from-to-www-redirect: "true"
     nginx.ingress.kubernetes.io/proxy-body-size: 10000m
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "60"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "60"
+    nginx.ingress.kubernetes.io/enable-websocket: "true"
 spec:
   rules:
     - host: "format.select"

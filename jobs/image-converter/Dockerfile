@@ -3,9 +3,8 @@ WORKDIR /app
 COPY package*.json ./
 RUN npm ci
 COPY . .
-RUN npm run build
+RUN npx tsx build.mts
 RUN npm prune --production
-
 
 FROM node:22-bookworm-slim
 WORKDIR /app
@@ -15,16 +14,10 @@ RUN apt-get update \
   && apt-get install -y imagemagick \
   && rm -rf /var/lib/apt/lists/*
 
-COPY --from=builder /app/build build/
+COPY --from=builder /app/dist dist/
 COPY --from=builder /app/node_modules node_modules/
 COPY package.json .
-COPY server.js server.js
 
-EXPOSE 3000
 ENV NODE_ENV=production
 
-ENV PROTOCOL_HEADER=x-forwarded-proto
-ENV HOST_HEADER=x-forwarded-host
-ENV BODY_SIZE_LIMIT=52428800
-
-CMD ["node", "server.js"]
+CMD ["node", "dist/index.js"]

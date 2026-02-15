@@ -14,7 +14,7 @@
 	{#if data.session?.user}
 		<nav class="border-b border-gray-200 bg-white px-4 py-3 dark:border-gray-700 dark:bg-gray-800">
 			<div class="mx-auto flex max-w-5xl items-center justify-between">
-				<a href="/" class="text-lg font-semibold text-gray-900 hover:text-gray-700 dark:text-white dark:hover:text-gray-300">format<span class="text-blue-600">.select</span></a>
+				<a href="/app" class="text-lg font-semibold text-gray-900 hover:text-gray-700 dark:text-white dark:hover:text-gray-300">format<span class="text-blue-600">.select</span></a>
 				<div class="flex items-center gap-4">
 					<span class="text-sm text-gray-600 dark:text-gray-300">{data.session.user.name}</span>
 					{#if data.usage?.plan === 'admin'}
@@ -33,15 +33,16 @@
 			</div>
 		</nav>
 	{:else}
-		<header class="sticky top-0 z-50 border-b border-gray-200 bg-white">
+		<header class="sticky top-0 z-50 border-b border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800">
 			<div class="mx-auto max-w-7xl px-6 py-4">
 				<div class="flex items-center justify-between">
-					<a href="/" class="text-2xl font-medium">
+					<a href="/" class="text-2xl font-medium text-gray-900 dark:text-white">
 						format<span class="text-blue-600">.select</span>
 					</a>
 					<nav class="flex items-center gap-8">
-						<a href="/paywall" class="text-sm font-medium text-gray-600 transition-colors hover:text-blue-600">Pricing</a>
-						<a href="/signin" class="px-4 py-2 text-sm font-medium text-gray-600 transition-colors hover:text-blue-600">Log In</a>
+            <a href="/docs" class="text-sm font-medium text-gray-600 transition-colors hover:text-blue-600 dark:text-gray-300 dark:hover:text-blue-400">Docs</a>
+						<a href="/paywall" class="text-sm font-medium text-gray-600 transition-colors hover:text-blue-600 dark:text-gray-300 dark:hover:text-blue-400">Pricing</a>
+						<a href="/signin" class="px-4 py-2 text-sm font-medium text-gray-600 transition-colors hover:text-blue-600 dark:text-gray-300 dark:hover:text-blue-400">Log In</a>
 						<a href="/signup" class="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700">Sign Up</a>
 					</nav>
 				</div>

@@ -1,8 +1,9 @@
 import { error } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { convertImage } from '$lib/convert';
 import { SUPPORTED_FORMATS, MAX_FILE_SIZE, type OutputFormat } from '$lib/formats';
 import { checkConversionLimit, recordConversion, type Plan } from '$lib/server/usage';
+import { submitConversionJob, waitForJobResult } from '$lib/server/jobs';
+import { storeFile, retrieveFile, deleteFile } from '$lib/db/gridfs';
 import mongoDbClient from '$lib/db/mongo';
 
 export const POST: RequestHandler = async ({ request, locals }) => {
@@ -24,11 +25,46 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 	const formData = await request.formData();
 
 	const file = formData.get('file');
-	if (!(file instanceof File) || file.size === 0) {
-		error(400, 'No file uploaded');
+	const uploadId = formData.get('uploadId') as string | null;
+
+	let inputBuffer: Buffer;
+	let originalName: string;
+
+	if (uploadId) {
+		// Chunked upload flow: reassemble from upload_chunks
+		const chunksCollection = db.collection('upload_chunks');
+		const chunks = await chunksCollection
+			.find({ uploadId, userId: user.id as any })
+			.sort({ chunkIndex: 1 })
+			.toArray();
+
+		if (chunks.length === 0) {
+			error(400, 'No chunks found for uploadId');
+		}
+
+		const totalChunks = chunks[0].totalChunks;
+		if (chunks.length !== totalChunks) {
+			error(400, `Incomplete upload: received ${chunks.length} of ${totalChunks} chunks`);
+		}
+
+		originalName = chunks[0].filename;
+		const buffers = chunks.map((c) => Buffer.from(c.data.buffer));
+		inputBuffer = Buffer.concat(buffers);
+
+		// Clean up chunks
+		await chunksCollection.deleteMany({ uploadId });
+	} else if (file instanceof File && file.size > 0) {
+		// Direct file upload flow
+		if (file.size > MAX_FILE_SIZE) {
+			error(400, `File too large. Maximum size is ${MAX_FILE_SIZE / 1024 / 1024}MB`);
+		}
+		originalName = file.name;
+		inputBuffer = Buffer.from(await file.arrayBuffer());
+	} else {
+		error(400, 'No file or uploadId provided');
 	}
 
-	if (file.size > MAX_FILE_SIZE) {
+	if (inputBuffer.length > MAX_FILE_SIZE) {
 		error(400, `File too large. Maximum size is ${MAX_FILE_SIZE / 1024 / 1024}MB`);
 	}
 
@@ -43,29 +79,48 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		error(400, 'Quality must be between 1 and 100');
 	}
 
-	const originalName = file.name;
 	const inputExtension = originalName.split('.').pop()?.toLowerCase() || 'png';
 
 	try {
-		const inputBuffer = Buffer.from(await file.arrayBuffer());
 
-		const result = await convertImage({
-			inputBuffer,
+		// Store input file in GridFS
+		const inputFileId = await storeFile(inputBuffer, {
+			originalName,
 			inputExtension,
-			outputFormat: format as OutputFormat,
+			userId: user.id
+		});
+
+		// Submit job to Redis stream
+		const jobId = await submitConversionJob({
+			inputFileId,
+			inputExtension,
+			outputFormat: format,
 			quality
 		});
+
+		// Wait for worker to finish (long-poll)
+		const result = await waitForJobResult(jobId);
+
+		if (!result.success) {
+			error(500, `Conversion failed: ${result.error || 'Unknown error'}`);
+		}
+
+		// Retrieve output file from GridFS
+		const outputBuffer = await retrieveFile(result.outputFileId!);
+
+		// Clean up output file from GridFS
+		await deleteFile(result.outputFileId!);
 
 		await recordConversion(user.id, 'web');
 
 		const baseName = originalName.replace(/\.[^.]+$/, '');
 		const outputFilename = `${baseName}.${format}`;
 
-		return new Response(new Uint8Array(result.data), {
+		return new Response(new Uint8Array(outputBuffer), {
 			headers: {
-				'Content-Type': result.mimeType,
+				'Content-Type': result.mimeType!,
 				'Content-Disposition': `attachment; filename="${outputFilename}"`,
-				'Content-Length': String(result.data.length)
+				'Content-Length': String(outputBuffer.length)
 			}
 		});
 	} catch (err) {

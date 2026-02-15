@@ -38,8 +38,11 @@ jobs:
         run: |
           doctl kubernetes cluster kubeconfig save --expiry-seconds 600 ${{ secrets.PRODUCTION_CLUSTER }}
           IMAGE_NAME="ghcr.io/${{ github.repository }}:${{ env.COMMIT_SHA }}" \
+          WORKER_IMAGE_NAME="ghcr.io/${{ github.repository }}-worker:${{ env.COMMIT_SHA }}" \
           APP_NAME="${{ env.APP_NAME }}" \
           envsubst < production-k8s.yaml | kubectl apply -f -
 
       - name: Verify deployment
-        run: kubectl rollout status deployment/${{ env.APP_NAME }}
+        run: |
+          kubectl rollout status deployment/${{ env.APP_NAME }}
+          kubectl rollout status deployment/${{ env.APP_NAME }}-worker
