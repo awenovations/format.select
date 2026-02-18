@@ -5,7 +5,7 @@
 		GlobeOutline,
 		ImageOutline,
 		ArrowRightOutline,
-		CloudArrowUpOutline
+		ShieldCheckOutline
 	} from 'flowbite-svelte-icons';
 
 	interface Props {
@@ -18,12 +18,12 @@
 		{
 			icon: RocketOutline,
 			title: 'Lightning Fast',
-			description: 'Convert your images in seconds with our optimized processing engine.'
+			description: 'Convert images instantly in your browser. No uploading, no waiting.'
 		},
 		{
 			icon: LockOutline,
-			title: 'Secure & Private',
-			description: 'Your files are processed securely and automatically deleted after conversion.'
+			title: '100% Private',
+			description: 'Your files never leave your device. All conversion happens locally using WebAssembly.'
 		},
 		{
 			icon: GlobeOutline,
@@ -52,21 +52,21 @@
 				format<span class="text-blue-600">.select</span>
 			</h1>
 			<p class="mb-4 text-xl font-medium text-gray-600 dark:text-gray-300 sm:text-2xl">
-				Image conversion, made simple
+				Private image conversion, powered by your browser
 			</p>
 			<p class="mx-auto mb-10 max-w-2xl text-lg text-gray-500 dark:text-gray-400">
-				Fast, secure, and free image format conversion. Convert between PNG, JPG, WebP, AVIF, and more with just a few clicks.
+				Your files never leave your device. Convert between PNG, JPG, WebP, AVIF, and more entirely in your browser using WebAssembly. No uploads, no servers, no compromise on privacy.
 			</p>
 			<div class="flex flex-col items-center justify-center gap-4 sm:flex-row">
 				{#if session}
 					<a href="/app" class="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-8 py-4 text-lg font-medium text-white transition-colors hover:bg-blue-700">
-						<CloudArrowUpOutline class="h-5 w-5" />
+						<ShieldCheckOutline class="h-5 w-5" />
 						Go to App
 						<ArrowRightOutline class="h-5 w-5" />
 					</a>
 				{:else}
 					<a href="/signup" class="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-8 py-4 text-lg font-medium text-white transition-colors hover:bg-blue-700">
-						<CloudArrowUpOutline class="h-5 w-5" />
+						<ShieldCheckOutline class="h-5 w-5" />
 						Sign Up Free
 						<ArrowRightOutline class="h-5 w-5" />
 					</a>
@@ -104,8 +104,23 @@
 	</div>
 </section>
 
+<!-- Privacy Callout -->
+<section class="bg-white px-6 py-24 dark:bg-gray-900">
+	<div class="mx-auto max-w-3xl text-center">
+		<div class="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-full bg-green-100 dark:bg-green-900">
+			<LockOutline class="h-8 w-8 text-green-600 dark:text-green-400" />
+		</div>
+		<h2 class="mb-4 text-3xl font-semibold tracking-tight text-gray-900 dark:text-white sm:text-4xl">
+			Your files never leave your device
+		</h2>
+		<p class="mx-auto max-w-2xl text-lg text-gray-600 dark:text-gray-400">
+			Unlike other converters that upload your files to remote servers, format<span class="text-blue-600">.select</span> processes everything locally in your browser using WebAssembly. Your images are never transmitted over the network &mdash; conversion happens entirely on your machine.
+		</p>
+	</div>
+</section>
+
 <!-- Supported Formats -->
-<section id="formats" class="bg-white px-6 py-24 dark:bg-gray-900">
+<section id="formats" class="bg-gray-50 px-6 py-24 dark:bg-gray-800">
 	<div class="mx-auto max-w-7xl">
 		<div class="mb-16 text-center">
 			<h2 class="mb-4 text-3xl font-semibold tracking-tight text-gray-900 dark:text-white sm:text-4xl lg:text-5xl">
@@ -154,7 +169,7 @@
 			</a>
 		{/if}
 		<p class="mt-6 text-sm text-blue-100">
-			Free forever plan &middot; All image formats &middot; Upgrade anytime
+			100% private &middot; Free forever plan &middot; All image formats
 		</p>
 	</div>
 </section>

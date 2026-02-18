@@ -1,7 +1,8 @@
 <script lang="ts">
-	import { Button, Card, Select, Label, Fileupload, Alert, Range, A } from 'flowbite-svelte';
-	import { CloudArrowUpOutline, DownloadOutline } from 'flowbite-svelte-icons';
+	import { Button, Card, Select, Label, Fileupload, Alert, Range, A, Radio } from 'flowbite-svelte';
+	import { CloudArrowUpOutline, DownloadOutline, LockOutline, ShieldCheckOutline } from 'flowbite-svelte-icons';
 	import { FORMAT_OPTIONS, ACCEPTED_INPUT_TYPES, CHUNK_SIZE, type OutputFormat } from '$lib/formats';
+	import { ensureWasmReady, convertImageWasm } from '$lib/wasm-convert';
 	import { invalidateAll } from '$app/navigation';
 	import { onMount, onDestroy } from 'svelte';
 	import { io, type Socket } from 'socket.io-client';
@@ -17,21 +18,27 @@
 	let downloadFilename: string = $state('');
 	let dragging: number = $state(0);
 	let progressMessage: string | null = $state(null);
+	let conversionMode: 'browser' | 'server' = $state('browser');
 
 	let socket: Socket | null = null;
 
 	let selectedFile: File | null = $derived(files?.[0] ?? null);
 	let selectedFormatInfo = $derived(FORMAT_OPTIONS.find((f) => f.value === selectedFormat));
 	let showQuality = $derived(selectedFormatInfo?.supportsQuality ?? false);
-	let canConvert = $derived(selectedFile !== null && !converting);
 	let usage = $derived(data.usage);
 	let isLimitReached = $derived(
 		usage && usage.plan !== 'admin' && usage.used >= usage.limit
+	);
+	let canConvert = $derived(
+		selectedFile !== null && !converting &&
+		(conversionMode === 'browser' || !isLimitReached)
 	);
 
 	const ACCEPTED_MIMES = ACCEPTED_INPUT_TYPES.split(',');
 
 	onMount(() => {
+		ensureWasmReady().catch(() => {});
+
 		if (data.session) {
 			socket = io({ path: '/events/' });
 			socket.emit('register', data.session.user.email);
@@ -116,6 +123,46 @@
 	}
 
 	async function handleConvert() {
+		if (conversionMode === 'browser') {
+			await handleBrowserConvert();
+		} else {
+			await handleServerConvert();
+		}
+	}
+
+	async function handleBrowserConvert() {
+		if (!selectedFile) return;
+
+		if (downloadUrl) {
+			URL.revokeObjectURL(downloadUrl);
+			downloadUrl = null;
+		}
+
+		converting = true;
+		errorMessage = null;
+		progressMessage = 'Loading converter...';
+
+		try {
+			await ensureWasmReady();
+			progressMessage = 'Converting...';
+
+			const result = await convertImageWasm({
+				file: selectedFile,
+				format: selectedFormat,
+				quality: showQuality ? quality : undefined
+			});
+
+			downloadUrl = URL.createObjectURL(result.blob);
+			downloadFilename = result.filename;
+		} catch (err) {
+			errorMessage = err instanceof Error ? err.message : 'Conversion failed';
+		} finally {
+			converting = false;
+			progressMessage = null;
+		}
+	}
+
+	async function handleServerConvert() {
 		if (!selectedFile) return;
 
 		if (downloadUrl) {
@@ -196,7 +243,7 @@
 		</h1>
 
 		<Card size="xl" class="p-6">
-			{#if usage && usage.plan !== 'admin'}
+			{#if conversionMode === 'server' && usage && usage.plan !== 'admin'}
 				{#if isLimitReached}
 					<Alert color="red" class="mb-4">
 						{#if usage.plan === 'free'}
@@ -245,6 +292,30 @@
 				</div>
 			{/if}
 
+			<div class="mb-6">
+				<Label class="mb-2">Conversion mode</Label>
+				<div class="flex flex-col gap-2">
+					<Radio name="conversionMode" value="browser" bind:group={conversionMode} disabled={converting}>
+						<span class="flex items-center gap-1.5">
+							<LockOutline class="h-4 w-4 text-green-600 dark:text-green-400" />
+							Private (in browser)
+						</span>
+						<span class="ms-6 block text-xs text-gray-500 dark:text-gray-400">
+							Files never leave your device
+						</span>
+					</Radio>
+					<Radio name="conversionMode" value="server" bind:group={conversionMode} disabled={converting}>
+						<span class="flex items-center gap-1.5">
+							<CloudArrowUpOutline class="h-4 w-4 text-blue-600 dark:text-blue-400" />
+							Cloud (server)
+						</span>
+						<span class="ms-6 block text-xs text-gray-500 dark:text-gray-400">
+							Uploaded to server for processing
+						</span>
+					</Radio>
+				</div>
+			</div>
+
 			<Button
 				color="blue"
 				class="mb-4 w-full"
@@ -253,9 +324,19 @@
 				onclick={handleConvert}
 			>
 				{#if !converting}
-					<CloudArrowUpOutline class="me-2 h-5 w-5" />
+					{#if conversionMode === 'browser'}
+						<ShieldCheckOutline class="me-2 h-5 w-5" />
+					{:else}
+						<CloudArrowUpOutline class="me-2 h-5 w-5" />
+					{/if}
 				{/if}
-				{converting ? (progressMessage?.startsWith('Uploading') ? 'Uploading...' : 'Converting...') : 'Convert'}
+				{#if converting}
+					{progressMessage?.startsWith('Uploading') ? 'Uploading...' : 'Converting...'}
+				{:else if conversionMode === 'browser'}
+					Convert Privately
+				{:else}
+					Convert via Cloud
+				{/if}
 			</Button>
 
 			{#if progressMessage && converting}

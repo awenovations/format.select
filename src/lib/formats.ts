@@ -19,6 +19,17 @@ export const FORMAT_OPTIONS: FormatOption[] = [
 	{ value: 'ico', name: 'ICO', supportsQuality: false, mimeType: 'image/x-icon' }
 ];
 
+export const MAGICK_FORMAT_MAP: Record<OutputFormat, string> = {
+	png: 'Png',
+	jpg: 'Jpeg',
+	webp: 'WebP',
+	gif: 'Gif',
+	bmp: 'Bmp',
+	tiff: 'Tiff',
+	avif: 'Avif',
+	ico: 'Ico'
+};
+
 export const ACCEPTED_INPUT_TYPES =
 	'image/png,image/jpeg,image/webp,image/gif,image/bmp,image/tiff,image/avif,image/svg+xml,image/x-icon';
 
