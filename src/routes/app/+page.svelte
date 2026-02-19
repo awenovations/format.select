@@ -30,8 +30,7 @@
 		usage && usage.plan !== 'admin' && usage.used >= usage.limit
 	);
 	let canConvert = $derived(
-		selectedFile !== null && !converting &&
-		(conversionMode === 'browser' || !isLimitReached)
+		selectedFile !== null && !converting && !isLimitReached
 	);
 
 	const ACCEPTED_MIMES = ACCEPTED_INPUT_TYPES.split(',');
@@ -140,9 +139,28 @@
 
 		converting = true;
 		errorMessage = null;
-		progressMessage = 'Loading converter...';
+		progressMessage = 'Checking limits...';
+
+		let conversionId: string | null = null;
 
 		try {
+			const authRes = await fetch('/api/convert/authorize', { method: 'POST' });
+			if (authRes.status === 402) {
+				window.location.href = '/paywall';
+				return;
+			}
+			if (authRes.status === 429) {
+				errorMessage = 'Hourly conversion limit reached. Please try again later.';
+				return;
+			}
+			if (!authRes.ok) {
+				const errData = await authRes.json().catch(() => null);
+				throw new Error(errData?.message ?? `Authorization failed: ${authRes.status}`);
+			}
+			const authData = await authRes.json();
+			conversionId = authData.conversionId;
+
+			progressMessage = 'Loading converter...';
 			await ensureWasmReady();
 			progressMessage = 'Converting...';
 
@@ -154,6 +172,18 @@
 
 			downloadUrl = URL.createObjectURL(result.blob);
 			downloadFilename = result.filename;
+
+			const confirmRes = await fetch('/api/convert/confirm', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ conversionId })
+			});
+			if (confirmRes.ok) {
+				const confirmData = await confirmRes.json();
+				data.usage = confirmData.usage;
+			}
+
+			await invalidateAll();
 		} catch (err) {
 			errorMessage = err instanceof Error ? err.message : 'Conversion failed';
 		} finally {
@@ -243,7 +273,7 @@
 		</h1>
 
 		<Card size="xl" class="p-6">
-			{#if conversionMode === 'server' && usage && usage.plan !== 'admin'}
+			{#if usage && usage.plan !== 'admin'}
 				{#if isLimitReached}
 					<Alert color="red" class="mb-4">
 						{#if usage.plan === 'free'}

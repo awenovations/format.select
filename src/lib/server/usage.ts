@@ -20,6 +20,7 @@ async function getCollections() {
 		await conversions.createIndex({ createdAt: 1 }, { expireAfterSeconds: 86400 });
 		await conversions.createIndex({ userId: 1, createdAt: 1 });
 		await conversions.createIndex({ userId: 1, source: 1, createdAt: 1 });
+		await conversions.createIndex({ pendingExpiresAt: 1 }, { expireAfterSeconds: 0 });
 		collectionsReady = true;
 	}
 
