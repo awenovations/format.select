@@ -19,6 +19,7 @@
 			if (payload.type === 'success') toast.success(payload.message, { description: payload.filename });
 			else toast.error(payload.message, { description: payload.filename });
 		});
+		conversionQueue.registerOnAdd(() => { drawerOpen = true; });
 		requestNotificationPermission();
 	});
 </script>

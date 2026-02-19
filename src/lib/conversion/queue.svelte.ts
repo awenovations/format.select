@@ -2,6 +2,11 @@ import type { ConversionItem, ConversionStatus } from './types';
 
 class ConversionQueue {
 	items: ConversionItem[] = $state([]);
+	#onAdd: (() => void) | null = null;
+
+	registerOnAdd(fn: () => void): void {
+		this.#onAdd = fn;
+	}
 
 	get active(): ConversionItem[] {
 		return this.items.filter(
@@ -27,6 +32,7 @@ class ConversionQueue {
 
 	add(item: ConversionItem): void {
 		this.items = [item, ...this.items];
+		this.#onAdd?.();
 	}
 
 	update(id: string, changes: Partial<Pick<ConversionItem, 'status' | 'progress' | 'progressMessage'>>): void {
