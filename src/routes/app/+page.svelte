@@ -1,26 +1,17 @@
 <script lang="ts">
 	import { Button, Card, Select, Label, Fileupload, Alert, Range, A, Radio } from 'flowbite-svelte';
-	import { CloudArrowUpOutline, DownloadOutline, LockOutline, ShieldCheckOutline } from 'flowbite-svelte-icons';
-	import { FORMAT_OPTIONS, ACCEPTED_INPUT_TYPES, CHUNK_SIZE, type OutputFormat } from '$lib/formats';
-	import { ensureWasmReady, convertImageWasm } from '$lib/wasm-convert';
-	import { invalidateAll } from '$app/navigation';
-	import { onMount, onDestroy } from 'svelte';
-	import { io, type Socket } from 'socket.io-client';
+	import { CloudArrowUpOutline, LockOutline, ShieldCheckOutline } from 'flowbite-svelte-icons';
+	import { FORMAT_OPTIONS, ACCEPTED_INPUT_TYPES, type OutputFormat } from '$lib/formats';
+	import { startConversion } from '$lib/conversion/runner';
 
 	let { data } = $props();
 
 	let files: FileList | null = $state(null);
 	let selectedFormat: OutputFormat = $state('webp');
 	let quality: number = $state(85);
-	let converting: boolean = $state(false);
 	let errorMessage: string | null = $state(null);
-	let downloadUrl: string | null = $state(null);
-	let downloadFilename: string = $state('');
 	let dragging: number = $state(0);
-	let progressMessage: string | null = $state(null);
 	let conversionMode: 'browser' | 'server' = $state('browser');
-
-	let socket: Socket | null = null;
 
 	let selectedFile: File | null = $derived(files?.[0] ?? null);
 	let selectedFormatInfo = $derived(FORMAT_OPTIONS.find((f) => f.value === selectedFormat));
@@ -30,30 +21,10 @@
 		usage && usage.plan !== 'admin' && usage.used >= usage.limit
 	);
 	let canConvert = $derived(
-		selectedFile !== null && !converting && !isLimitReached
+		selectedFile !== null && !isLimitReached
 	);
 
 	const ACCEPTED_MIMES = ACCEPTED_INPUT_TYPES.split(',');
-
-	onMount(() => {
-		ensureWasmReady().catch(() => {});
-
-		if (data.session) {
-			socket = io({ path: '/events/' });
-			socket.emit('register', data.session.user.email);
-
-			socket.on('conversion-progress', (event: { status: string; message?: string }) => {
-				progressMessage = event.message || event.status;
-			});
-		}
-	});
-
-	onDestroy(() => {
-		if (socket) {
-			socket.disconnect();
-			socket = null;
-		}
-	});
 
 	function handleDragEnter(e: DragEvent) {
 		e.preventDefault();
@@ -88,165 +59,16 @@
 		errorMessage = null;
 	}
 
-	async function uploadChunks(file: File): Promise<string> {
-		const uploadId = crypto.randomUUID();
-		const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
-
-		for (let i = 0; i < totalChunks; i++) {
-			const start = i * CHUNK_SIZE;
-			const end = Math.min(start + CHUNK_SIZE, file.size);
-			const chunkBlob = file.slice(start, end);
-
-			const formData = new FormData();
-			formData.append('uploadId', uploadId);
-			formData.append('chunkIndex', String(i));
-			formData.append('totalChunks', String(totalChunks));
-			formData.append('filename', file.name);
-			formData.append('chunk', chunkBlob);
-
-			const response = await fetch('/api/upload', {
-				method: 'POST',
-				body: formData
-			});
-
-			if (!response.ok) {
-				const errData = await response.json().catch(() => null);
-				throw new Error(errData?.message ?? `Chunk upload failed: ${response.status}`);
-			}
-
-			const pct = Math.round(((i + 1) / totalChunks) * 100);
-			progressMessage = `Uploading... ${pct}%`;
-		}
-
-		return uploadId;
-	}
-
-	async function handleConvert() {
-		if (conversionMode === 'browser') {
-			await handleBrowserConvert();
-		} else {
-			await handleServerConvert();
-		}
-	}
-
-	async function handleBrowserConvert() {
+	function handleConvert() {
 		if (!selectedFile) return;
-
-		if (downloadUrl) {
-			URL.revokeObjectURL(downloadUrl);
-			downloadUrl = null;
-		}
-
-		converting = true;
+		startConversion({
+			file: selectedFile,
+			format: selectedFormat,
+			quality: showQuality ? quality : undefined,
+			mode: conversionMode
+		});
+		files = null;
 		errorMessage = null;
-		progressMessage = 'Checking limits...';
-
-		let conversionId: string | null = null;
-
-		try {
-			const authRes = await fetch('/api/convert/authorize', { method: 'POST' });
-			if (authRes.status === 402) {
-				window.location.href = '/paywall';
-				return;
-			}
-			if (authRes.status === 429) {
-				errorMessage = 'Hourly conversion limit reached. Please try again later.';
-				return;
-			}
-			if (!authRes.ok) {
-				const errData = await authRes.json().catch(() => null);
-				throw new Error(errData?.message ?? `Authorization failed: ${authRes.status}`);
-			}
-			const authData = await authRes.json();
-			conversionId = authData.conversionId;
-
-			progressMessage = 'Loading converter...';
-			await ensureWasmReady();
-			progressMessage = 'Converting...';
-
-			const result = await convertImageWasm({
-				file: selectedFile,
-				format: selectedFormat,
-				quality: showQuality ? quality : undefined
-			});
-
-			downloadUrl = URL.createObjectURL(result.blob);
-			downloadFilename = result.filename;
-
-			const confirmRes = await fetch('/api/convert/confirm', {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ conversionId })
-			});
-			if (confirmRes.ok) {
-				const confirmData = await confirmRes.json();
-				data.usage = confirmData.usage;
-			}
-
-			await invalidateAll();
-		} catch (err) {
-			errorMessage = err instanceof Error ? err.message : 'Conversion failed';
-		} finally {
-			converting = false;
-			progressMessage = null;
-		}
-	}
-
-	async function handleServerConvert() {
-		if (!selectedFile) return;
-
-		if (downloadUrl) {
-			URL.revokeObjectURL(downloadUrl);
-			downloadUrl = null;
-		}
-
-		converting = true;
-		errorMessage = null;
-		progressMessage = 'Uploading... 0%';
-
-		try {
-			const uploadId = await uploadChunks(selectedFile);
-
-			progressMessage = 'Converting...';
-
-			const formData = new FormData();
-			formData.append('uploadId', uploadId);
-			formData.append('format', selectedFormat);
-			if (showQuality) {
-				formData.append('quality', String(quality));
-			}
-
-			const response = await fetch('/api/convert', {
-				method: 'POST',
-				body: formData
-			});
-
-			if (!response.ok) {
-				if (response.status === 402) {
-					window.location.href = '/paywall';
-					return;
-				}
-				if (response.status === 429) {
-					errorMessage = 'Hourly conversion limit reached. Please try again later.';
-					return;
-				}
-				const errData = await response.json().catch(() => null);
-				throw new Error(errData?.message ?? `Server error: ${response.status}`);
-			}
-
-			const blob = await response.blob();
-			downloadUrl = URL.createObjectURL(blob);
-
-			const baseName = selectedFile.name.replace(/\.[^.]+$/, '');
-			downloadFilename = `${baseName}.${selectedFormat}`;
-
-			await invalidateAll();
-		} catch (err) {
-			errorMessage = err instanceof Error ? err.message : 'Conversion failed';
-		} finally {
-			converting = false;
-			progressMessage = null;
-		}
 	}
 </script>
 
@@ -325,7 +147,7 @@
 			<div class="mb-6">
 				<Label class="mb-2">Conversion mode</Label>
 				<div class="flex flex-col gap-2">
-					<Radio name="conversionMode" value="browser" bind:group={conversionMode} disabled={converting}>
+					<Radio name="conversionMode" value="browser" bind:group={conversionMode}>
 						<span class="flex items-center gap-1.5">
 							<LockOutline class="h-4 w-4 text-green-600 dark:text-green-400" />
 							Private (in browser)
@@ -334,7 +156,7 @@
 							Files never leave your device
 						</span>
 					</Radio>
-					<Radio name="conversionMode" value="server" bind:group={conversionMode} disabled={converting}>
+					<Radio name="conversionMode" value="server" bind:group={conversionMode}>
 						<span class="flex items-center gap-1.5">
 							<CloudArrowUpOutline class="h-4 w-4 text-blue-600 dark:text-blue-400" />
 							Cloud (server)
@@ -348,44 +170,23 @@
 
 			<Button
 				color="blue"
-				class="mb-4 w-full"
+				class="w-full"
 				disabled={!canConvert}
-				loading={converting}
 				onclick={handleConvert}
 			>
-				{#if !converting}
-					{#if conversionMode === 'browser'}
-						<ShieldCheckOutline class="me-2 h-5 w-5" />
-					{:else}
-						<CloudArrowUpOutline class="me-2 h-5 w-5" />
-					{/if}
-				{/if}
-				{#if converting}
-					{progressMessage?.startsWith('Uploading') ? 'Uploading...' : 'Converting...'}
-				{:else if conversionMode === 'browser'}
+				{#if conversionMode === 'browser'}
+					<ShieldCheckOutline class="me-2 h-5 w-5" />
 					Convert Privately
 				{:else}
+					<CloudArrowUpOutline class="me-2 h-5 w-5" />
 					Convert via Cloud
 				{/if}
 			</Button>
 
-			{#if progressMessage && converting}
-				<Alert color="blue" class="mb-4">
-					{progressMessage}
-				</Alert>
-			{/if}
-
 			{#if errorMessage}
-				<Alert color="red" class="mb-4" dismissable>
+				<Alert color="red" class="mt-4" dismissable>
 					{errorMessage}
 				</Alert>
-			{/if}
-
-			{#if downloadUrl}
-				<Button href={downloadUrl} download={downloadFilename} color="green" class="w-full">
-					<DownloadOutline class="me-2 h-5 w-5" />
-					Download {downloadFilename}
-				</Button>
 			{/if}
 		</Card>
 	</div>

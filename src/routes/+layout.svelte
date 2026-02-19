@@ -4,11 +4,28 @@
 	import { enhance } from '$app/forms';
 	import { Button, Badge, A } from 'flowbite-svelte';
 	import { CogOutline } from 'flowbite-svelte-icons';
+	import { Toaster, toast } from 'svelte-sonner';
+	import ConversionDrawer from '$lib/components/ConversionDrawer.svelte';
+	import ConversionToggleButton from '$lib/components/ConversionToggleButton.svelte';
+	import { registerToastHandler, requestNotificationPermission } from '$lib/conversion/notifications';
+	import { conversionQueue } from '$lib/conversion/queue.svelte';
 
 	let { children, data } = $props();
+
+	let drawerOpen = $state(false);
+
+	$effect(() => {
+		registerToastHandler((payload) => {
+			if (payload.type === 'success') toast.success(payload.message, { description: payload.filename });
+			else toast.error(payload.message, { description: payload.filename });
+		});
+		requestNotificationPermission();
+	});
 </script>
 
 <svelte:head><link rel="icon" href={favicon} /></svelte:head>
+
+<Toaster position="bottom-right" richColors />
 
 <div class="flex min-h-screen flex-col bg-gray-50 dark:bg-gray-900">
 	{#if data.session?.user}
@@ -25,6 +42,7 @@
 						<a href="/paywall" class="text-sm text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200">Upgrade</a>
 					{/if}
 					<a href="/docs" class="text-sm text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200">Docs</a>
+					<ConversionToggleButton onclick={() => drawerOpen = !drawerOpen} />
 					<a href="/settings" class="text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200" title="Settings"><CogOutline class="h-5 w-5" /></a>
 					<form method="post" action="/signout" use:enhance>
 						<Button type="submit" size="sm" color="alternative">Sign Out</Button>
@@ -58,3 +76,7 @@
 		&copy; {new Date().getFullYear()} format<span class="text-blue-600">.select</span>. All rights reserved.
 	</footer>
 </div>
+
+{#if data.session?.user}
+	<ConversionDrawer bind:open={drawerOpen} />
+{/if}
