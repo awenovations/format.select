@@ -1,8 +1,18 @@
+import { browser } from '$app/environment';
 import type { ConversionItem, ConversionStatus } from './types';
+import { saveMetadata, saveBlob, loadItems, removeItems } from './persistence';
 
 class ConversionQueue {
 	items: ConversionItem[] = $state([]);
 	#onAdd: (() => void) | null = null;
+
+	constructor() {
+		if (browser) {
+			loadItems().then((persisted) => {
+				this.items = [...persisted, ...this.items];
+			});
+		}
+	}
 
 	registerOnAdd(fn: () => void): void {
 		this.#onAdd = fn;
@@ -55,6 +65,12 @@ class ConversionQueue {
 					}
 				: item
 		);
+		fetch(resultUrl)
+			.then((r) => r.blob())
+			.then((blob) => {
+				saveBlob(id, blob);
+				saveMetadata(this.items);
+			});
 	}
 
 	fail(id: string, errorMessage: string): void {
@@ -69,6 +85,7 @@ class ConversionQueue {
 					}
 				: item
 		);
+		saveMetadata(this.items);
 	}
 
 	remove(id: string): void {
@@ -77,16 +94,19 @@ class ConversionQueue {
 			URL.revokeObjectURL(item.resultUrl);
 		}
 		this.items = this.items.filter((i) => i.id !== id);
+		removeItems([id]);
 	}
 
 	clearFinished(): void {
 		const finished = this.items.filter((i) => i.status === 'done' || i.status === 'error');
+		const finishedIds = finished.map((i) => i.id);
 		for (const item of finished) {
 			if (item.resultUrl) {
 				URL.revokeObjectURL(item.resultUrl);
 			}
 		}
 		this.items = this.items.filter((i) => i.status !== 'done' && i.status !== 'error');
+		removeItems(finishedIds);
 	}
 }
 

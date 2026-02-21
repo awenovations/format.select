@@ -12,10 +12,10 @@
 	class="relative text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200"
 	title="Conversions"
 >
-	<ClipboardListOutline class="h-5 w-5" />
-	{#if conversionQueue.activeCount > 0}
+	<ClipboardListOutline class="h-6 w-6" />
+	{#if conversionQueue.items.length > 0}
 		<Indicator color="blue" border size="xl" placement="top-right">
-			<span class="text-xs font-bold text-white">{conversionQueue.activeCount}</span>
+			<span class="text-xs font-bold text-white">{conversionQueue.items.length}</span>
 		</Indicator>
 	{/if}
 </button>

@@ -13,16 +13,14 @@
 	let dragging: number = $state(0);
 	let conversionMode: 'browser' | 'server' = $state('browser');
 
-	let selectedFile: File | null = $derived(files?.[0] ?? null);
+	let selectedFiles: File[] = $derived(files ? Array.from(files) : []);
 	let selectedFormatInfo = $derived(FORMAT_OPTIONS.find((f) => f.value === selectedFormat));
 	let showQuality = $derived(selectedFormatInfo?.supportsQuality ?? false);
 	let usage = $derived(data.usage);
 	let isLimitReached = $derived(
 		usage && usage.plan !== 'admin' && usage.used >= usage.limit
 	);
-	let canConvert = $derived(
-		selectedFile !== null && !isLimitReached
-	);
+	let canConvert = $derived(selectedFiles.length > 0 && !isLimitReached);
 
 	const ACCEPTED_MIMES = ACCEPTED_INPUT_TYPES.split(',');
 
@@ -47,26 +45,28 @@
 		const droppedFiles = e.dataTransfer?.files;
 		if (!droppedFiles?.length) return;
 
-		const file = droppedFiles[0];
-		if (!ACCEPTED_MIMES.includes(file.type)) {
-			errorMessage = 'Unsupported file type. Please drop an image file.';
+		const valid = Array.from(droppedFiles).filter(f => ACCEPTED_MIMES.includes(f.type));
+		if (!valid.length) {
+			errorMessage = 'No supported image files found. Please drop image files.';
 			return;
 		}
 
 		const dt = new DataTransfer();
-		dt.items.add(file);
+		valid.forEach(f => dt.items.add(f));
 		files = dt.files;
 		errorMessage = null;
 	}
 
 	function handleConvert() {
-		if (!selectedFile) return;
-		startConversion({
-			file: selectedFile,
-			format: selectedFormat,
-			quality: showQuality ? quality : undefined,
-			mode: conversionMode
-		});
+		if (!selectedFiles.length) return;
+		for (const file of selectedFiles) {
+			startConversion({
+				file,
+				format: selectedFormat,
+				quality: showQuality ? quality : undefined,
+				mode: conversionMode
+			});
+		}
 		files = null;
 		errorMessage = null;
 	}
@@ -118,15 +118,20 @@
 
 			<div class="mb-6">
 				<Label for="file-upload" class="mb-2">Choose an image file</Label>
-				<Fileupload id="file-upload" bind:files accept={ACCEPTED_INPUT_TYPES} />
-				{#if files?.[0]}
+				<Fileupload id="file-upload" bind:files accept={ACCEPTED_INPUT_TYPES} multiple />
+				{#if selectedFiles.length === 1}
 					<p class="mt-2 text-sm text-gray-500 dark:text-gray-400">
-						Selected: {files[0].name} ({(files[0].size / 1024 / 1024).toFixed(2)} MB)
+						Selected: {selectedFiles[0].name} ({(selectedFiles[0].size / 1024 / 1024).toFixed(2)} MB)
+					</p>
+				{:else if selectedFiles.length > 1}
+					<p class="mt-2 text-sm text-gray-500 dark:text-gray-400">
+						{selectedFiles.length} files selected
+						({(selectedFiles.reduce((s, f) => s + f.size, 0) / 1024 / 1024).toFixed(2)} MB total)
 					</p>
 				{/if}
 			</div>
 
-			{#if files?.[0] && files[0].size >= 5 * 1024 * 1024}
+			{#if selectedFiles.some(f => f.size >= 5 * 1024 * 1024)}
 				<Alert color="yellow" class="mb-4">
 					Large files may take a while to convert.
 				</Alert>
